@@ -21,9 +21,10 @@ void setup() {
 void loop() {
   while(ligado!=true){
     lcd.setCursor(0, 0); //Coloca o cursor do display na coluna 1 e linha 1
-      lcd.print("Inserir a Temperatura:");
-      lcd.print(valor);//Exibe a mensagem na primeira linha do display
-      for(int posi_LCD = 0; posi_LCD < 3; posi_LCD ++)
+    lcd.print("Inserir a Temperatura:");
+    lcd.setCursor(0, 1); //Coloca o cursor do display na coluna 1 e linha 1
+    lcd.print(valor);
+      for(int posi_LCD = 0; posi_LCD < 72; posi_LCD ++)
       {
         lcd.setCursor(16,1);
     	lcd.scrollDisplayLeft();  //Essa é a função que faz as letras se deslocarem
@@ -35,6 +36,7 @@ void loop() {
       lcd.clear();
     }  
   }
+  valor++;
   lcd.setCursor(0, 0); //Coloca o cursor do display na coluna 1 e linha 1
   lcd.print("Temperatura:"+String(valor)+"C");//Exibe a mensagem na primeira linha do display
   lcd.setCursor(0, 1); //Coloca o cursor do display na coluna 1 e linha 2
@@ -42,3 +44,4 @@ void loop() {
   lcd.print(50);
   
 }
+  
