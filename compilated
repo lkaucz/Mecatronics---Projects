@@ -25,8 +25,8 @@ void setup() {
 
 void loop() {
   
-  float sinal;
-  sinal=(analogRead(pinopotenc)/34.1)+25;
+  int sinal;
+  sinal=int((analogRead(pinopotenc)/34.1)+25);
   
   while(ligado!=true){
     sinal=(analogRead(pinopotenc)/34.1)+25;
@@ -48,8 +48,8 @@ void loop() {
   lcd.setCursor(5,1);
   lcd.print(" |");
   lcd.setCursor(8,1);
-  lcd.print("Meta:");
-  lcd.print(sinal);
+  lcd.print("Meta:"+String(sinal)+"C");
+
   temperatura = (analogRead(sensorPin) * 0.0048828125 * 100); //VARIÁVEL RECEBE A TEMPERATURA MEDIDA
 
   delay(500); //INTERVALO DE 2 SEGUNDOS
