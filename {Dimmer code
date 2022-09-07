@@ -1,0 +1,32 @@
+int AC_LOAD=3;
+int dimming=128;
+
+void setup() {
+  // put your setup code here, to run once:
+pinMode(AC_LOAD,OUTPUT);
+attachInterrupt(0, zero_crosss_int,RISING);
+
+}
+
+void zero_crosss_int(){
+
+  int dimtime=(65*dimming);
+  delayMicroseconds(dimtime);
+  digitalWrite(AC_LOAD,HIGH);
+  delayMicroseconds(8.33);
+  digitalWrite(AC_LOAD,LOW);
+  
+}
+
+void loop() {
+  
+  dimming=128;
+  delay(500);
+  dimming=75;
+  delay(500);
+  dimming=25;
+  delay(500);
+  dimming=0;
+  delay(500);
+
+}
