@@ -1,20 +1,16 @@
-#include <DHT.h>
-#include <DHT_U.h>
+#include <DHT.h> //Biblioteca sensor temperatura
+#include <DHT_U.h> //Biblioteca sensor umidade
 
 #include <Wire.h> //Biblioteca utilizada gerenciar a comunicação entre dispositicos através do protocolo I2C
 #include <LiquidCrystal_I2C.h> //Biblioteca controlar display 16x2 através do I2C
 
-#include <avr/io.h>
-#include <avr/interrupt.h>
+#include <avr/io.h> //Biblioteca interruptores (dimmer)
+#include <avr/interrupt.h> //Biblioteca interruptores (dimmer)
 
-#include <PID_v1.h>
+#include <PID_v1.h> //Biblioteca PID arduino
 
-//#define pin_input A1 //(float t = dht.readTemperature())
-//#define pin_set A2 //(sinal)
-//#define Pin_out 3 //defineIntensidade(output)
-
-#define PINO_ZC 2    // recomendo não mudar este pino
-#define PINO_DIM 3   // recomendo não mudar este pino
+#define PINO_ZC 2    // passagem por 0
+#define PINO_DIM 3   // pwm
 
 #define PULSO 4    // tempo em que o pino DIM ficara em HIGH, contado em ciclos do Timer1
 #define FRACO 60   // intensidade minima desejada para a lampada (0 a ~520) 
@@ -23,29 +19,29 @@
 #define col  16 //Define o número de colunas do display utilizado
 #define lin   2 //Define o número de linhas do display utilizado
 #define ende  0x27 //Define o endereço do display
-#define DHTPIN A1 // pino que estamos conectado
+#define DHTPIN A1 // Pino sensor temperatura/umidade
 #define DHTTYPE DHT11 // DHT 11
-#define pinopotenc A2
+#define pinopotenc A2 // Pino Potenciometro
 
 DHT dht(DHTPIN, DHTTYPE);
 
 int buttonPin = 8;//Define buttonPin no pino digital 8
 
-bool ligado=false;
+bool ligado=false //variável para detectar se o push button foi pressionado
 
-LiquidCrystal_I2C lcd(ende, col, lin); //Cria o objeto lcd passando como parâmetros o endereço, o nº de colunas e o nº de linhas;
+LiquidCrystal_I2C lcd(ende, col, lin); //Cria o objeto lcd passando como parâmetros o endereço, o nº de colunas e o nº de linhas
 
-unsigned long lastSend=0;
+unsigned long lastSend=0; //detectart o último envio da intensidade da lâmpada
 
-double Setpoint, Input, Output;
+double Setpoint, Input, Output; // entradas e saidas PID
 
-double kp=2, ki=1.2 , kd=1;
+double kp=2, ki=1.2 , kd=1; // variáveis PID
 
 PID myPID(&Input, &Output, &Setpoint,kp,ki,kd,DIRECT);
  
 void setup() 
 {
-  dht.begin();
+  dht.begin(); //Inicializa o sensor de umidade e temperatura
   pinMode(pinopotenc, INPUT);
   pinMode(buttonPin , INPUT);
   lcd.init(); //Inicializa a comunicação com o display já conectado
@@ -55,13 +51,12 @@ void setup()
   pinMode(PINO_ZC, INPUT_PULLUP);
   pinMode(PINO_DIM, OUTPUT);
 
-  Serial.begin(115200);
-  Input= int(dht.readTemperature()); 
-  Setpoint=int((analogRead(pinopotenc)/34.1)+25);
-  myPID.SetMode(AUTOMATIC);
+  Serial.begin(115200); // Inicia Serial com uma velocidade alta para acompanhar bem o Serial plotter 
+  Input= int(dht.readTemperature()); //Leitura temperatura
+  Setpoint=int((analogRead(pinopotenc)/34.1)+25); //Leitura do potenciometro com a escala convertida  
+  myPID.SetMode(AUTOMATIC);// Inicia o PID
 
-  // ativa o Timer/Counter1 com os modos dos bits 0 e 1, ou seja,
-  // ativa Comparador A e detector de overflow
+  // ativa o Timer/Counter1 com os modos dos bits 0 e 1, ou seja, ativa Comparador A e detector de overflow
   TIMSK1 = 0x03;    // 16.11.8 na datasheet 
 
   // desabilita inicialmente o timer:
@@ -71,8 +66,7 @@ void setup()
 }
 
 void defineIntensidade(int k) { 
-  // recebe um valor de 0 a 1024 para a intensidade da lampada, e define o valor correspondente
-  // (entre as constantes FORTE e FRACO) para o comparador do Timer1
+  // recebe um valor de 0 a 1024 para a intensidade da lampada, e define o valor correspondente (entre as constantes FORTE e FRACO) para o comparador do Timer1
   OCR1A=map(k,0,1024,FORTE,FRACO);  // 16.11.5 na datasheet 
 }
 
@@ -80,11 +74,8 @@ void zeroCross() { // chamada automaticamente sempre que o pino 2 mudar para HIG
   TCCR1B=0x04; // 16.11.2 - habilita o timer no modo que divide o clock real por 256
   TCNT1=0;     // 16.11.4 - zera o contador do timer
   
-  // a partir daqui, esta interrupcao encerra (ate a proxima repeticao do ciclo AC), 
-  // mas o ATmega vai começar a incrementar o valor de TCNT1 automaticamente a cada 
-  // ciclo do Timer1, provocando uma nova interrupcao (TIMER1_COMPA) quando o contador 
-  // alcancar o valor definido em OCR1A.
-  // Assim, se OCR1A for um valor alto, vai demorar mais para a interrupcao acontecer, 
+  // a partir daqui, esta interrupcao encerra (ate a proxima repeticao do ciclo AC),  mas o ATmega vai começar a incrementar o valor de TCNT1 automaticamente a cada 
+  // ciclo do Timer1, provocando uma nova interrupcao (TIMER1_COMPA) quando o contador alcancar o valor definido em OCR1A. Assim, se OCR1A for um valor alto, vai demorar mais para a interrupcao acontecer, 
   // e vice-versa. Essa demora corresponde ao tempo em que a lampada fica apagada.
 }
 
@@ -112,34 +103,32 @@ ISR(TIMER1_OVF_vect) { // chamada automaticamente sempre que ha overflow de TCNT
   // meio ciclo AC.      
 }
 
- 
 void loop() 
 {
   
   int sinal;
-  sinal=int((analogRead(pinopotenc)/34.1)+25);
+  sinal=int((analogRead(pinopotenc)/34.1)+25); //Leitura do potenciometro com a escala convertida  
   
-  while(ligado!=true){
+  while(ligado!=true){ //Loop para manter na tela de seleção de temperatura até o botão ser acionado e começar o funcionamento da estufa
     sinal=(analogRead(pinopotenc)/33.08)+25;
-    lcd.setCursor(0, 0); //Coloca o cursor do display na coluna 1 e linha 1
-    lcd.print("Inserir a Temp:");
-    lcd.setCursor(6, 1); //Coloca o cursor do display na coluna 1 e linha 1      for(int posi_LCD = 0; posi_LCD < 36; posi_LCD ++)
-    lcd.print(String(sinal)+"C");
+    lcd.setCursor(0, 0); //Coloca o cursor do display na coluna 0 e linha 0
+    lcd.print("Inserir a Temp:"); // Exibe a mensagem com as variáveis
+    lcd.setCursor(6, 1); //Coloca o cursor do display na coluna 6 e linha 1
+    lcd.print(String(sinal)+"C"); // Exibe a mensagem com as variáveis
     
-    if (digitalRead(buttonPin)==1){
+    if (digitalRead(buttonPin)==1){ //se o botão é acionado, limpa o lcd e inicia o aquecimento/leituras
       delay(1000);
       ligado=true;
       lcd.clear();
     }  
   }
-  float h = dht.readHumidity();
-  float t = dht.readTemperature();
-  // testa se retorno é valido, caso contrário algo está errado.
+  float h = dht.readHumidity(); //ler umidade
+  float t = dht.readTemperature(); //ler temperatura
 
-    lcd.setCursor(0, 0); //Coloca o cursor do display na coluna 1 e linha 1
-    lcd.print("Temp: " + String(t) + "C");//Exibe a mensagem na primeira linha do display
-    lcd.setCursor(0, 1); //Coloca o cursor do display na coluna 1 e linha 2
-    lcd.print("Um:");  //Exibe a mensagem na segunda linha do display
+    lcd.setCursor(0, 0); //Coloca o cursor do display na coluna 0 e linha 0
+    lcd.print("Temp: " + String(t) + "C"); // Exibe a mensagem com as variáveis
+    lcd.setCursor(0, 1); 
+    lcd.print("Um:");  
     lcd.print(h);
     lcd.setCursor(5,1);
     lcd.print(" | ");
@@ -148,16 +137,19 @@ void loop()
 
     attachInterrupt(0,zeroCross, RISING);
 
-    Input= int(dht.readTemperature()); 
-    Setpoint=int(sinal);
+    Input= int(dht.readTemperature()); //Leitura temperatura
+    Setpoint=int(sinal); //Leitura do potenciometro com a escala convertida 
     myPID.Compute();
-    Output=Output+50;
+    Output=Output+50; //Converte o Output em uma escala aceitavél para a variação da potência da lampada
 
-    if(int(sinal)>int(t)+4){
+    if(int(sinal)>int(t)+4){ // se a variação (meta-real) for maior que 4°C, ativa a potência máxima
       defineIntensidade(500);
     }
+    if(int(t)>int(sinal)+2){ // se a variação (real-meta) for maior que 2°C, desativa a lampâda
+      defineIntensidade(0);
+    }
     else{
-      defineIntensidade(Output);
+       defineIntensidade(Output); //ativa o Output enviado pelo PID no intervalo : limite inferior(4°C abaixo) / limite superior(2°C acima)
     }
     
 
@@ -171,13 +163,11 @@ void loop()
     Serial.print(Output);
     Serial.println("");
   }
-
-        if (digitalRead(buttonPin)==1){
-      ligado=false;
-      detachInterrupt(0);
-      defineIntensidade(0);
-      lcd.clear();
+  
+  if (digitalRead(buttonPin)==1){ // verifica se o botão foi pressionado para desligar o sistema de aquecimento e voltar no lcd inicial
+    ligado=false;
+    detachInterrupt(0);
+    defineIntensidade(0);
+    lcd.clear();
     }  
-
-  delay(500); //INTERVALO DE 2 SEGUNDOS
 }
