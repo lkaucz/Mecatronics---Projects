@@ -1,32 +1,86 @@
-int AC_LOAD=3;
-int dimming=128;
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+#define PINO_ZC 2    // recomendo não mudar este pino
+#define PINO_DIM 3   // recomendo não mudar este pino
+//#define PINO_CHAVE 4
+
+#define PULSO 4    // tempo em que o pino DIM ficara em HIGH, contado em ciclos do Timer1
+#define FRACO 60   // intensidade minima desejada para a lampada (0 a ~520) 
+#define FORTE 485  // intensidade maxima desejada para a lampada (0 a ~520) 
 
 void setup() {
-  // put your setup code here, to run once:
-pinMode(AC_LOAD,OUTPUT);
-attachInterrupt(0, zero_crosss_int,RISING);
+  pinMode(PINO_ZC, INPUT_PULLUP);
+  pinMode(PINO_DIM, OUTPUT);
+  //pinMode(PINO_CHAVE,INPUT_PULLUP);
 
+  // ativa o Timer/Counter1 com os modos dos bits 0 e 1, ou seja,
+  // ativa Comparador A e detector de overflow
+  TIMSK1 = 0x03;    // 16.11.8 na datasheet 
+
+  // desabilita inicialmente o timer:
+  TCCR1A = 0x00;    // 16.11.1 na datasheet   
+  TCCR1B = 0x00;    // 16.11.2 na datasheet 
+}  
+
+void defineIntensidade(int k) { 
+  // recebe um valor de 0 a 1024 para a intensidade da lampada, e define o valor correspondente
+  // (entre as constantes FORTE e FRACO) para o comparador do Timer1
+  OCR1A=map(k,0,1024,FORTE,FRACO);  // 16.11.5 na datasheet 
 }
 
-void zero_crosss_int(){
-
-  int dimtime=(65*dimming);
-  delayMicroseconds(dimtime);
-  digitalWrite(AC_LOAD,HIGH);
-  delayMicroseconds(8.33);
-  digitalWrite(AC_LOAD,LOW);
+void zeroCross() { // chamada automaticamente sempre que o pino 2 mudar para HIGH  
+  TCCR1B=0x04; // 16.11.2 - habilita o timer no modo que divide o clock real por 256
+  TCNT1=0;     // 16.11.4 - zera o contador do timer
   
+  // a partir daqui, esta interrupcao encerra (ate a proxima repeticao do ciclo AC), 
+  // mas o ATmega vai começar a incrementar o valor de TCNT1 automaticamente a cada 
+  // ciclo do Timer1, provocando uma nova interrupcao (TIMER1_COMPA) quando o contador 
+  // alcancar o valor definido em OCR1A.
+  // Assim, se OCR1A for um valor alto, vai demorar mais para a interrupcao acontecer, 
+  // e vice-versa. Essa demora corresponde ao tempo em que a lampada fica apagada.
 }
+
+ISR(TIMER1_COMPA_vect) { // chamada automaticamente sempre que o TCNT1 alcanca OCR1A.
+  // manda um valor HIGH para o pino DIM, acendendo a lampada
+  digitalWrite(PINO_DIM,HIGH);  
+  // inicia um novo contador para o Timer1, calculado para provocar um overflow (e 
+  // uma nova interrupcao - TIMER1_OVF) apos o numero de ciclos definido em PULSO.
+  TCNT1 = 65536-PULSO;
+  
+  // a partir daqui, esta interrupcao encerra, e o ATmega comeca a incrementar o 
+  // valor de TCNT1 automaticamente a cada ciclo do Timer1, provocando uma nova 
+  // interrupcao (OVF) quando o contador entrar em overflow. Como o contador TCNT1
+  // tem 16 bits, o overflow acontece quando ele ultrapassa o valor de 65535.
+}
+
+ISR(TIMER1_OVF_vect) { // chamada automaticamente sempre que ha overflow de TCNT1.
+  // manda um valor LOW para o pino DIM, voltando a apagar a lampada
+  digitalWrite(PINO_DIM,LOW);
+  // desativa o timer que foi inicialmente ativado pela nossa funcao zeroCross().
+  TCCR1B = 0x00;    
+  
+  // a partir daqui, esta interrupcao encerra. O normal eh que a proxima 
+  // interrupcao a acontecer seja a do pino 2 (zeroCross()), no proximo 
+  // meio ciclo AC.      
+}
+
 
 void loop() {
-  
-  dimming=128;
-  delay(500);
-  dimming=75;
-  delay(500);
-  dimming=25;
-  delay(500);
-  dimming=0;
-  delay(500);
+    attachInterrupt(0,zeroCross, RISING);
 
+    defineIntensidade(80);
+    delay(500);
+    defineIntensidade(125);
+    delay(500);
+    defineIntensidade(200);
+    delay(100);
+    
+    //for (int j=FRACO; j<FORTE; j++) {
+      //defineIntensidade(j);
+      //delay(40);
+   // }
+    delay(50);
+    // desativa a interrupcao 0 e apaga a lampada  
+    //detachInterrupt(0); 
 }
