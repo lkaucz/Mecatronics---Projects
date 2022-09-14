@@ -27,7 +27,7 @@ DHT dht(DHTPIN, DHTTYPE);
 
 int buttonPin = 8;//Define buttonPin no pino digital 8
 
-bool ligado=false //variável para detectar se o push button foi pressionado
+bool ligado=false; //variável para detectar se o push button foi pressionado
 
 LiquidCrystal_I2C lcd(ende, col, lin); //Cria o objeto lcd passando como parâmetros o endereço, o nº de colunas e o nº de linhas
 
@@ -169,5 +169,6 @@ void loop()
     detachInterrupt(0);
     defineIntensidade(0);
     lcd.clear();
+    delay(1000);
     }  
 }
