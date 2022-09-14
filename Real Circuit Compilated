@@ -138,21 +138,23 @@ void loop()
     attachInterrupt(0,zeroCross, RISING);
 
     
-    if(int(sinal)-int(t)>=2){ // se a variação (meta-real) for maior que 4°C, ativa a potência máxima
-      defineIntensidade(700);
+    if(int(sinal)-int(t)>0){ // se a variação (meta-real) for maior que 4°C, ativa a potência máxima
+      defineIntensidade(1000);
     }
     if(int(sinal)-int(t)<=-3){ // se a variação (real-meta) for maior que 2°C, desativa a lampâda
       defineIntensidade(0);
     }
-    if(int(sinal)-int(t)<2 && int(sinal)-int(t)>-3 ){
+    if(int(sinal)-int(t)<=0 && int(sinal)-int(t)>-3 ){
       Input= int(dht.readTemperature()); //Leitura temperatura
       Setpoint=int(sinal); //Leitura do potenciometro com a escala convertida 
       myPID.Compute();
       if(Output>30){
-      Output=Output+200; //Converte o Output em uma escala aceitavél para a variação da potência da lampada
+        Output=Output+350; //Converte o Output em uma escala aceitavél para a variação da potência da lampada
+        if(Output>1000){Output=1000;}
       }
       else{
-        Output=Output+100;
+        Output=Output+150;
+        if(Output>1000){Output=1000;}
         }
         defineIntensidade(Output); //ativa o Output enviado pelo PID no intervalo : limite inferior(4°C abaixo) / limite superior(2°C acima)
         }
