@@ -35,7 +35,7 @@ unsigned long lastSend=0; //detectart o último envio da intensidade da lâmpada
 
 double Setpoint, Input, Output; // entradas e saidas PID
 
-double kp=2, ki=1.2 , kd=1; // variáveis PID
+double kp=1.5, ki=2 , kd=1; // variáveis PID
 
 PID myPID(&Input, &Output, &Setpoint,kp,ki,kd,DIRECT);
  
@@ -129,7 +129,7 @@ void loop()
     lcd.print("Temp: " + String(t) + "C"); // Exibe a mensagem com as variáveis
     lcd.setCursor(0, 1); 
     lcd.print("Um:");  
-    lcd.print(h);
+    lcd.print(int(h));
     lcd.setCursor(5,1);
     lcd.print(" | ");
     lcd.setCursor(8,1);
@@ -137,20 +137,25 @@ void loop()
 
     attachInterrupt(0,zeroCross, RISING);
 
-    Input= int(dht.readTemperature()); //Leitura temperatura
-    Setpoint=int(sinal); //Leitura do potenciometro com a escala convertida 
-    myPID.Compute();
-    Output=Output+50; //Converte o Output em uma escala aceitavél para a variação da potência da lampada
-
-    if(int(sinal)>int(t)+4){ // se a variação (meta-real) for maior que 4°C, ativa a potência máxima
-      defineIntensidade(500);
+    
+    if(int(sinal)-int(t)>=2){ // se a variação (meta-real) for maior que 4°C, ativa a potência máxima
+      defineIntensidade(700);
     }
-    if(int(t)>int(sinal)+2){ // se a variação (real-meta) for maior que 2°C, desativa a lampâda
+    if(int(sinal)-int(t)<=-3){ // se a variação (real-meta) for maior que 2°C, desativa a lampâda
       defineIntensidade(0);
     }
-    else{
-       defineIntensidade(Output); //ativa o Output enviado pelo PID no intervalo : limite inferior(4°C abaixo) / limite superior(2°C acima)
-    }
+    if(int(sinal)-int(t)<2 && int(sinal)-int(t)>-3 ){
+      Input= int(dht.readTemperature()); //Leitura temperatura
+      Setpoint=int(sinal); //Leitura do potenciometro com a escala convertida 
+      myPID.Compute();
+      if(Output>30){
+      Output=Output+200; //Converte o Output em uma escala aceitavél para a variação da potência da lampada
+      }
+      else{
+        Output=Output+100;
+        }
+        defineIntensidade(Output); //ativa o Output enviado pelo PID no intervalo : limite inferior(4°C abaixo) / limite superior(2°C acima)
+        }
     
 
     if(millis()-lastSend >100){
